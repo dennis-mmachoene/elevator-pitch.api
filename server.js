@@ -9,12 +9,13 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
-// Import routes (will be created next)
+// Import routes
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import listingRoutes from './routes/listing.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import orderRoutes from './routes/order.routes.js';
+import uploadRoutes from './routes/upload.routes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/error.middleware.js';
@@ -83,6 +84,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -132,9 +134,9 @@ const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    console.log(` MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`❌ MongoDB Connection Error: ${error.message}`);
+    console.error(` MongoDB Connection Error: ${error.message}`);
     process.exit(1);
   }
 };
@@ -146,28 +148,28 @@ const startServer = async () => {
   await connectDB();
   
   httpServer.listen(PORT, () => {
-    console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-    console.log(`📡 Socket.IO server ready for real-time communication`);
+    console.log(` Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    console.log(` Socket.IO server ready for real-time communication`);
   });
 };
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error(`❌ Unhandled Rejection: ${err.message}`);
+  console.error(` Unhandled Rejection: ${err.message}`);
   httpServer.close(() => process.exit(1));
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.error(`❌ Uncaught Exception: ${err.message}`);
+  console.error(` Uncaught Exception: ${err.message}`);
   process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('👋 SIGTERM received. Shutting down gracefully...');
+  console.log(' SIGTERM received. Shutting down gracefully...');
   httpServer.close(() => {
-    console.log('✅ Process terminated');
+    console.log(' Process terminated');
   });
 });
 
