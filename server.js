@@ -45,10 +45,26 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      process.env.CLIENT_URL
+    ].filter(Boolean);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['set-cookie'],
 }));
 
 // Body parsing middleware
@@ -69,6 +85,9 @@ if (process.env.NODE_ENV === 'development') {
 // Rate limiting
 app.use('/api/', rateLimiter);
 
+// Handle preflight requests
+app.options(/.*/, cors());
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -86,13 +105,25 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler (Express 5+)
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: 'Route not found',
   });
 });
+
+// Handle CORS errors explicitly
+app.use((err, req, res, next) => {
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ success: false, message: 'CORS policy violation' });
+  }
+  next(err);
+});
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
@@ -134,9 +165,9 @@ const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log(` MongoDB Connected: ${conn.connection.host}`);
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(` MongoDB Connection Error: ${error.message}`);
+    console.error(`❌ MongoDB Connection Error: ${error.message}`);
     process.exit(1);
   }
 };
@@ -148,28 +179,28 @@ const startServer = async () => {
   await connectDB();
   
   httpServer.listen(PORT, () => {
-    console.log(` Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-    console.log(` Socket.IO server ready for real-time communication`);
+    console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    console.log(`📡 Socket.IO server ready for real-time communication`);
   });
 };
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error(` Unhandled Rejection: ${err.message}`);
+  console.error(`❌ Unhandled Rejection: ${err.message}`);
   httpServer.close(() => process.exit(1));
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.error(` Uncaught Exception: ${err.message}`);
+  console.error(`❌ Uncaught Exception: ${err.message}`);
   process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log(' SIGTERM received. Shutting down gracefully...');
+  console.log('👋 SIGTERM received. Shutting down gracefully...');
   httpServer.close(() => {
-    console.log(' Process terminated');
+    console.log('✅ Process terminated');
   });
 });
 
